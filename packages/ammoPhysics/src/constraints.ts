@@ -135,7 +135,7 @@ export default class Constraints {
     transform.transformA.setRotation(bodyA.ammo.getWorldTransform().getRotation())
     transform.transformB.setRotation(bodyB.ammo.getWorldTransform().getRotation())
     const constraint = new Ammo.btFixedConstraint(bodyA.ammo, bodyB.ammo, transform.transformA, transform.transformB)
-    this.physicsWorld.addConstraint(constraint)
+    this.physicsWorld.addConstraint(constraint, true)
     return constraint
   }
 
@@ -151,7 +151,7 @@ export default class Constraints {
     const pivotV3 = new Ammo.btVector3(pivotA?.x || 0, pivotA?.y || 0, pivotA?.z || 0)
     const targetPivotV3 = new Ammo.btVector3(pivotB?.x || 0, pivotB?.y || 0, pivotB?.z || 0)
     const constraint = new Ammo.btPoint2PointConstraint(body.ammo, targetBody.ammo, pivotV3, targetPivotV3)
-    this.physicsWorld.addConstraint(constraint)
+    this.physicsWorld.addConstraint(constraint, true)
     return constraint
   }
 
@@ -179,7 +179,8 @@ export default class Constraints {
       targetAxisV3,
       true
     )
-    this.physicsWorld.addConstraint(constraint)
+
+    this.physicsWorld.addConstraint(constraint, true)
     return constraint
   }
 
@@ -228,7 +229,7 @@ export default class Constraints {
     constraint.setLowerAngLimit(all)
     constraint.setUpperAngLimit(aul)
 
-    this.physicsWorld.addConstraint(constraint)
+    this.physicsWorld.addConstraint(constraint, true)
     return constraint
   }
 
@@ -281,7 +282,7 @@ export default class Constraints {
     // I have no idea what setEquilibriumPoint does :/
     // constraint.setEquilibriumPoint()
 
-    this.physicsWorld.addConstraint(constraint)
+    this.physicsWorld.addConstraint(constraint, true)
 
     return constraint
   }
@@ -304,7 +305,7 @@ export default class Constraints {
 
     constraint.setAngularOnly(true)
 
-    this.physicsWorld.addConstraint(constraint)
+    this.physicsWorld.addConstraint(constraint, true)
 
     return constraint
   }
@@ -351,7 +352,7 @@ export default class Constraints {
     Ammo.destroy(all)
     Ammo.destroy(aul)
 
-    this.physicsWorld.addConstraint(constraint, false)
+    this.physicsWorld.addConstraint(constraint, true)
 
     return constraint
   }
