@@ -608,7 +608,7 @@ class AmmoPhysics extends EventEmitter {
         collisionShape = new Ammo.btSphereShape(params.radius)
         break
       case 'cylinder':
-        collisionShape = new Ammo.btCylinderShape(new Ammo.btVector3(params.radiusTop, params.height / 2, 0))
+        collisionShape = new Ammo.btCylinderShape(new Ammo.btVector3(params.radiusTop, params.height / 2, 1))
         break
       case 'cone':
         collisionShape = new Ammo.btConeShape(params.radius, params.height)
