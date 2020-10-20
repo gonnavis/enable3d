@@ -65,6 +65,10 @@ export default class Constraints {
           angularLock?: boolean
           linearLowerLimit?: XYZ
           linearUpperLimit?: XYZ
+          angularLowerLimit?: XYZ
+          angularUpperLimit?: XYZ
+          center?: boolean
+          offset?: XYZ
         } = {}
       ) => this.spring(body, targetBody, config),
       coneTwist: (bodyA: PhysicsBody, bodyB: PhysicsBody, frameA: XYZ = {}, frameB: XYZ = {}) =>
@@ -107,7 +111,11 @@ export default class Constraints {
       // offset
       transformB.setOrigin(new Ammo.btVector3(offset.x, offset.y, offset.z))
 
-      const transformA = bodyA.getCenterOfMassTransform().inverse().op_mul(bodyB.getWorldTransform()).op_mul(transformB)
+      const transformA = bodyA
+        .getCenterOfMassTransform()
+        .inverse()
+        .op_mul(bodyB.getWorldTransform())
+        .op_mul(transformB)
 
       return { transformA: transformA, transformB: transformB }
     } else {
@@ -117,7 +125,10 @@ export default class Constraints {
       transformB.setIdentity()
       transformB.setOrigin(center)
 
-      const transformA = bodyA.getCenterOfMassTransform().inverse().op_mul(bodyB.getWorldTransform())
+      const transformA = bodyA
+        .getCenterOfMassTransform()
+        .inverse()
+        .op_mul(bodyB.getWorldTransform())
 
       transformA.op_mul(transformB)
 
@@ -242,6 +253,10 @@ export default class Constraints {
       angularLock?: boolean
       linearLowerLimit?: XYZ
       linearUpperLimit?: XYZ
+      angularLowerLimit?: XYZ
+      angularUpperLimit?: XYZ
+      center?: boolean
+      offset?: XYZ
     } = {}
   ) {
     const {
@@ -249,10 +264,16 @@ export default class Constraints {
       damping = 0.01,
       angularLock = false,
       linearLowerLimit: lll = {},
-      linearUpperLimit: lul = {}
+      linearUpperLimit: lul = {},
+      angularLowerLimit: all = {},
+      angularUpperLimit: aul = {},
+      offset = {},
+      center = false
     } = config
 
-    const transform = this.getTransform(body.ammo, targetBody.ammo)
+    const off = { x: 0, y: 0, z: 0, ...offset }
+
+    const transform = this.getTransform(body.ammo, targetBody.ammo, off, center)
     const constraint = new Ammo.btGeneric6DofSpringConstraint(
       body.ammo,
       targetBody.ammo,
@@ -271,6 +292,10 @@ export default class Constraints {
       this.tmpBtVector3.setValue(0, 0, 0)
       constraint.setAngularLowerLimit(this.tmpBtVector3)
       constraint.setAngularUpperLimit(this.tmpBtVector3)
+    } else {
+      console.log(all, aul)
+      constraint.setAngularLowerLimit(this.toAmmoV3(all, -Math.PI))
+      constraint.setAngularUpperLimit(this.toAmmoV3(aul, Math.PI))
     }
 
     for (let i = 0; i < 3; i++) {

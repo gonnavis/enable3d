@@ -1,15 +1,17 @@
 import { Project, Scene3D, PhysicsLoader, ExtendedObject3D, THREE } from 'enable3d'
+import { MaterialConfig } from '../../enable3d/node_modules/@enable3d/common/dist/types'
 import { SpotLight, SpotLightHelper, PointLight, DirectionalLight } from '../../threeWrapper/dist'
 
 var debugWheels = false
-var material = { lambert: { transparent: true, opacity: 0.75 } }
+var material: MaterialConfig = { lambert: { transparent: true, opacity: 0.5 } }
 
 class MainScene extends Scene3D {
   keys = {
     w: false,
     a: false,
     s: false,
-    d: false
+    d: false,
+    space: false
   }
   car: any
   axis: Ammo.btHingeConstraint
@@ -35,7 +37,10 @@ class MainScene extends Scene3D {
   }
 
   addBody() {
-    const box = this.add.box({ y: 1.5, width: 1.75, depth: 3.65, mass: 500 }, material)
+    const box = this.add.box(
+      { y: 1.5, width: 1.75, depth: 3.65, mass: 500 },
+      { lambert: { ...material.lambert, wireframe: true } }
+    )
     this.physics.add.existing(box, { collisionFlags: 4 })
     return box
   }
@@ -49,6 +54,9 @@ class MainScene extends Scene3D {
 
   async create() {
     // this.warpSpeed()
+
+    this.physics.add.box({ y: 0.25, x: 1.25, z: -3, collisionFlags: 2 })
+    this.physics.add.box({ y: 0.5, x: 1.25, z: -4, collisionFlags: 2 })
 
     const { lights } = await this.warpSpeed('-ground')
     const light = lights?.directionalLight
@@ -77,7 +85,7 @@ class MainScene extends Scene3D {
     })
 
     this.physics.debug?.enable()
-    // this.physics.debug?.mode(2048 + 4096)
+    this.physics.debug?.mode(2048 + 4096)
 
     this.camera.position.set(0, 5, -10)
 
@@ -96,7 +104,29 @@ class MainScene extends Scene3D {
 
     // constraints
 
-    this.physics.add.constraints.fixed(body.body, axis.back.body)
+    const stiffness = 500
+    const damping = 0.01
+    const limits = {
+      linearLowerLimit: { x: 0, y: 0, z: 0 },
+      linearUpperLimit: { x: 0, y: 0.25, z: 0 },
+      angularLowerLimit: { x: 0, y: 0, z: -Math.PI },
+      angularUpperLimit: { x: 0, y: 0, z: Math.PI }
+    }
+    this.physics.add.constraints.spring(body.body, axis.back.body, {
+      angularLock: false,
+      ...limits,
+      stiffness,
+      damping,
+      offset: { x: 0.75, y: 0, z: 0 }
+    })
+
+    this.physics.add.constraints.spring(body.body, axis.back.body, {
+      angularLock: false,
+      ...limits,
+      stiffness,
+      damping,
+      offset: { x: -0.75, y: 0, z: 0 }
+    })
 
     this.axis = this.physics.add.constraints.hinge(body.body, axis.front.body, {
       pivotA: { z: 1.5, y: -0.5 },
@@ -149,6 +179,9 @@ class MainScene extends Scene3D {
         case 'KeyD':
           this.keys.d = isDown
           break
+        case 'Space':
+          this.keys.space = isDown
+          break
       }
     }
 
@@ -167,9 +200,9 @@ class MainScene extends Scene3D {
     // this.light.position.add(new THREE.Vector3(-5, 9, 3))
 
     const move = (direction: number) => {
-      const force = 6
-      this.car.wheels.front.left.body.applyLocalTorque(0, direction * force, 0)
-      this.car.wheels.front.right.body.applyLocalTorque(0, direction * force, 0)
+      const force = 3
+      this.car.wheels.back.left.body.applyLocalTorque(0, direction * force, 0)
+      this.car.wheels.back.right.body.applyLocalTorque(0, direction * force, 0)
     }
 
     const turn = (direction: number) => {
@@ -186,6 +219,8 @@ class MainScene extends Scene3D {
     if (this.keys.a) turn(1)
     else if (this.keys.d) turn(-1)
     else this.axis.setMotorTarget(0, 1)
+
+    if (this.keys.space) this.car.body.body.applyForceY(2)
   }
 }
 
