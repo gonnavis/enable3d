@@ -14,7 +14,11 @@ class MainScene extends Scene3D {
     space: false
   }
   car: any
-  axis: Ammo.btHingeConstraint
+  motors: {
+    leftWheel: Ammo.btHingeConstraint
+    rightWheel: Ammo.btHingeConstraint
+    axis: Ammo.btHingeConstraint
+  }
   light: DirectionalLight
 
   preload() {
@@ -24,7 +28,7 @@ class MainScene extends Scene3D {
   addWheel(x: number, z: number) {
     const y = debugWheels ? 3 : 1
     const wheel = this.add.cylinder(
-      { mass: 25, radiusBottom: 0.5, radiusTop: 0.5, radiusSegments: 24, height: 0.35, x, y, z },
+      { mass: 50, radiusBottom: 0.5, radiusTop: 0.5, radiusSegments: 24, height: 0.35, x, y, z },
       material
     )
 
@@ -32,16 +36,16 @@ class MainScene extends Scene3D {
     // @ts-ignore
     // this.physics.add.existing(wheel, { shape: 'convex' })
     this.physics.add.existing(wheel)
-    wheel.body.setFriction(1)
+    wheel.body.setFriction(2)
     return wheel
   }
 
   addBody() {
     const box = this.add.box(
-      { y: 1.5, width: 1.75, depth: 3.65, mass: 500 },
+      { y: 1, width: 1.5, depth: 3.65, mass: 1200, height: 0.25 },
       { lambert: { ...material.lambert, wireframe: true } }
     )
-    this.physics.add.existing(box, { collisionFlags: 4 })
+    this.physics.add.existing(box, { collisionFlags: 0 })
     return box
   }
 
@@ -53,7 +57,7 @@ class MainScene extends Scene3D {
   }
 
   async create() {
-    // this.warpSpeed()
+    // this.warpSpeed()s
 
     this.physics.add.box({ y: 0.25, x: 1.25, z: -3, collisionFlags: 2 })
     this.physics.add.box({ y: 0.5, x: 1.25, z: -4, collisionFlags: 2 })
@@ -104,7 +108,7 @@ class MainScene extends Scene3D {
 
     // constraints
 
-    const stiffness = 500
+    const stiffness = 250
     const damping = 0.01
     const limits = {
       linearLowerLimit: { x: 0, y: 0, z: 0 },
@@ -128,8 +132,8 @@ class MainScene extends Scene3D {
       offset: { x: -0.75, y: 0, z: 0 }
     })
 
-    this.axis = this.physics.add.constraints.hinge(body.body, axis.front.body, {
-      pivotA: { z: 1.5, y: -0.5 },
+    const axisMotor = this.physics.add.constraints.hinge(body.body, axis.front.body, {
+      pivotA: { z: 1.5, y: -0 },
       pivotB: {},
       axisA: { y: 1 },
       axisB: { y: 1 }
@@ -144,8 +148,6 @@ class MainScene extends Scene3D {
       //   z: 0
       // }
     })
-    this.axis.setLimit(-0.4, 0.4, 1, 1)
-    this.axis.enableAngularMotor(true, 0, 100000.0)
 
     const wheelLeft = { pivotA: { x: 1.25 }, pivotB: { x: 0 }, axisA: { x: 1 }, axisB: { y: -1 } }
     const wheelRight = { pivotA: { x: -1.25 }, pivotB: { x: 0 }, axisA: { x: 1 }, axisB: { y: -1 } }
@@ -156,12 +158,22 @@ class MainScene extends Scene3D {
     this.physics.add.constraints.hinge(axis.front.body, wheels.front.right.body, {
       ...wheelRight
     })
-    this.physics.add.constraints.hinge(axis.back.body, wheels.back.left.body, {
+
+    const leftWheelMotor = this.physics.add.constraints.hinge(axis.back.body, wheels.back.left.body, {
       ...wheelLeft
     })
-    this.physics.add.constraints.hinge(axis.back.body, wheels.back.right.body, {
+
+    const rightWheelMotor = this.physics.add.constraints.hinge(axis.back.body, wheels.back.right.body, {
       ...wheelRight
     })
+
+    axisMotor.setLimit(-0.4, 0.4, 1, 1)
+    axisMotor.enableAngularMotor(true, 0, 100000.0)
+
+    // leftWheelMotor.setLimit(-Math.PI, Math.PI, 5, 5)
+    // rightWheelMotor.setLimit(-Math.PI, Math.PI, 5, 5)
+
+    this.motors = { axis: axisMotor, leftWheel: leftWheelMotor, rightWheel: rightWheelMotor }
 
     const press = (e: KeyboardEvent, isDown: boolean) => {
       e.preventDefault()
@@ -200,25 +212,38 @@ class MainScene extends Scene3D {
     // this.light.position.add(new THREE.Vector3(-5, 9, 3))
 
     const move = (direction: number) => {
-      const force = 3
-      this.car.wheels.back.left.body.applyLocalTorque(0, direction * force, 0)
-      this.car.wheels.back.right.body.applyLocalTorque(0, direction * force, 0)
+      console.log('move')
+      const speed = 50
+      // this.car.wheels.back.left.body.applyLocalTorque(0, direction * force, 0)
+      // this.car.wheels.back.right.body.applyLocalTorque(0, direction * force, 0)
+      // this.motors.leftWheel.setMotorTarget(direction, dt)
+      // this.motors.leftWheel.setMotorTarget(0, dt)
+      // this.motors.leftWheel.setMotorTarget(2, dt)
+      // this.motors.rightWheel.setMotorTarget(direction, wwwwdt)
+      this.motors.leftWheel.enableAngularMotor(true, speed * direction, 0.2)
+      this.motors.rightWheel.enableAngularMotor(true, speed * direction, 0.2)
     }
 
     const turn = (direction: number) => {
       const dt = 0.5
 
-      this.axis.setMotorTarget(direction, dt)
+      this.motors.axis.setMotorTarget(direction, dt)
       //   this.car.axis.front.body.applyLocalTorque(0, direction * force, 0)
       //   this.car.axis.front.body.applyLocalTorque(0, direction * force, 0)
     }
 
-    if (this.keys.w) move(-1)
-    else if (this.keys.s) move(1)
+    if (this.keys.w) move(1)
+    else if (this.keys.s) move(-1)
+    else {
+      this.motors.leftWheel.enableAngularMotor(true, 0, 0.02)
+      this.motors.rightWheel.enableAngularMotor(true, 0, 0.02)
+      // this.motors.leftWheel.enableMotor(false)
+      // this.motors.rightWheel.enableMotor(false)
+    }
 
     if (this.keys.a) turn(1)
     else if (this.keys.d) turn(-1)
-    else this.axis.setMotorTarget(0, 1)
+    else this.motors.axis.setMotorTarget(0, 1)
 
     if (this.keys.space) this.car.body.body.applyForceY(2)
   }
