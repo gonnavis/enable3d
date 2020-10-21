@@ -2,9 +2,6 @@ import { Project, Scene3D, PhysicsLoader, ExtendedObject3D, THREE } from 'enable
 import { MaterialConfig } from '../../enable3d/node_modules/@enable3d/common/dist/types'
 import { SpotLight, SpotLightHelper, PointLight, DirectionalLight } from '../../threeWrapper/dist'
 
-var debugWheels = false
-var material: MaterialConfig = { lambert: { transparent: true, opacity: 0.5 } }
-
 class MainScene extends Scene3D {
   keys = {
     w: false,
@@ -17,7 +14,8 @@ class MainScene extends Scene3D {
   motors: {
     leftWheel: Ammo.btHingeConstraint
     rightWheel: Ammo.btHingeConstraint
-    axis: Ammo.btHingeConstraint
+    axisLeft?: Ammo.btHingeConstraint
+    axisRight?: Ammo.btHingeConstraint
   }
   light: DirectionalLight
 
@@ -25,59 +23,50 @@ class MainScene extends Scene3D {
     this.load.preload('grass', '/assets/grass.jpg')
   }
 
-  addWheel(x: number, z: number) {
-    const y = debugWheels ? 3 : 1
-    const wheel = this.add.cylinder(
-      { mass: 50, radiusBottom: 0.5, radiusTop: 0.5, radiusSegments: 24, height: 0.35, x, y, z },
-      material
+  addPlate() {
+    const plate = this.add.box(
+      { y: 1, width: 1.8, depth: 4.5, mass: 50, height: 0.25 },
+      { lambert: { wireframe: true } }
     )
-
-    wheel.rotateZ(Math.PI / 2)
-    // @ts-ignore
-    // this.physics.add.existing(wheel, { shape: 'convex' })
-    this.physics.add.existing(wheel)
-    wheel.body.setFriction(2)
-    return wheel
-  }
-
-  addBody() {
-    const box = this.add.box(
-      { y: 1, width: 1.5, depth: 3.65, mass: 1200, height: 0.25 },
-      { lambert: { ...material.lambert, wireframe: true } }
-    )
-    this.physics.add.existing(box, { collisionFlags: 0 })
-    return box
+    this.physics.add.existing(plate)
+    return plate
   }
 
   addAxis(z: number) {
-    const y = debugWheels ? 3 : 1
-    const box = this.add.box({ mass: 50, x: 0, y, z, height: 0.25, width: 1.75, depth: 0.25 }, material)
-    this.physics.add.existing(box)
-    return box
+    const axis = this.add.cylinder(
+      { z, y: 1, mass: 10, radiusTop: 0.06, radiusBottom: 0.06, height: 2.575 },
+      { lambert: { color: 'blue', transparent: true, opacity: 0.5 } }
+    )
+    axis.rotateZ(Math.PI / 2)
+    this.physics.add.existing(axis)
+    return axis
+  }
+
+  addRotor(x: number, z: number) {
+    const rotor = this.add.cylinder(
+      { mass: 10, radiusBottom: 0.35, radiusTop: 0.35, radiusSegments: 24, height: 0.4, x, y: 1, z },
+      { lambert: { color: 'red', transparent: true, opacity: 0.5 } }
+    )
+
+    rotor.rotateZ(Math.PI / 2)
+    this.physics.add.existing(rotor)
+    return rotor
+  }
+
+  addWheel(x: number, z: number) {
+    const wheel = this.add.cylinder(
+      { mass: 20, radiusBottom: 0.5, radiusTop: 0.5, radiusSegments: 24, height: 0.35, x, y: 1, z },
+      { lambert: { color: 'blue', transparent: true, opacity: 0.5 } }
+    )
+
+    wheel.rotateZ(Math.PI / 2)
+    this.physics.add.existing(wheel)
+    // wheel.body.setFriction(2)
+    return wheel
   }
 
   async create() {
-    // this.warpSpeed()s
-
-    this.physics.add.box({ y: 0.25, x: 1.25, z: -3, collisionFlags: 2 })
-    this.physics.add.box({ y: 0.5, x: 1.25, z: -4, collisionFlags: 2 })
-
-    const { lights } = await this.warpSpeed('-ground')
-    const light = lights?.directionalLight
-    if (light) {
-      this.light = light
-
-      const d = 5
-      this.light.shadow.camera.top = d
-      this.light.shadow.camera.bottom = -d
-      this.light.shadow.camera.left = -d
-      this.light.shadow.camera.right = d
-
-      this.lights.helper.directionalLightHelper(light)
-
-      const shadowHelper = new THREE.CameraHelper(light.shadow.camera)
-      this.scene.add(shadowHelper)
-    }
+    this.warpSpeed('-ground')
 
     this.load.texture('grass').then(grass => {
       grass.wrapS = grass.wrapT = 1000 // RepeatWrapping
@@ -91,89 +80,71 @@ class MainScene extends Scene3D {
     this.physics.debug?.enable()
     this.physics.debug?.mode(2048 + 4096)
 
-    this.camera.position.set(0, 5, -10)
+    this.camera.position.set(0, 10, 0)
+    this.camera.lookAt(0, 0, 0)
 
-    const wheels = {
-      front: { left: this.addWheel(1.5, 1.5), right: this.addWheel(-1.5, 1.5) },
-      back: { left: this.addWheel(1.5, -1.5), right: this.addWheel(-1.5, -1.5) }
+    const wheelX = 1.5,
+      wheelZ = 2,
+      axisZ = 0.2
+
+    // blue wheels
+    const wheelBackRight = this.addWheel(wheelX, wheelZ)
+    const wheelBackLeft = this.addWheel(-wheelX, wheelZ)
+    const wheelFrontRight = this.addWheel(wheelX, -wheelZ) // right front
+    const wheelFrontLeft = this.addWheel(-wheelX, -wheelZ)
+
+    // red rotors
+    const rotorBackRight = this.addRotor(wheelX, wheelZ)
+    const rotorBackLeft = this.addRotor(-wheelX, wheelZ)
+    const rotorFrontRight = this.addRotor(wheelX, -wheelZ)
+    const rotorFrontLeft = this.addRotor(-wheelX, -wheelZ)
+
+    // blue axis
+    const axisBackOne = this.addAxis(wheelZ + axisZ) // the one at the back
+    const axisBackTwo = this.addAxis(wheelZ - axisZ)
+    const axisFrontOne = this.addAxis(-wheelZ + axisZ)
+    const axisFrontTwo = this.addAxis(-wheelZ - axisZ)
+
+    // constraint wheel to rotor
+    const wheelToRotorConstraint = { axisA: { y: 1 }, axisB: { y: 1 } }
+    const motorLeft = this.physics.add.constraints.hinge(wheelBackLeft.body, rotorBackLeft.body, wheelToRotorConstraint)
+    const motorRight = this.physics.add.constraints.hinge(
+      wheelBackRight.body,
+      rotorBackRight.body,
+      wheelToRotorConstraint
+    )
+    this.physics.add.constraints.hinge(wheelFrontLeft.body, rotorFrontLeft.body, wheelToRotorConstraint)
+    this.physics.add.constraints.hinge(wheelFrontRight.body, rotorFrontRight.body, wheelToRotorConstraint)
+
+    // motorLeft.enableAngularMotor(true, -1, 0.05)
+    // motorRight.enableAngularMotor(true, -1, 0.05)
+
+    // constraint axis to rotor
+    const axisToRotor = (rotorRight: any, rotorLeft: any, axis: any, z: number) => {
+      this.physics.add.constraints.hinge(rotorRight.body, axis.body, {
+        pivotA: { y: 0.2, z: z },
+        pivotB: { y: -1.3 },
+        axisA: { x: 1 },
+        axisB: { x: 1 }
+      })
+      this.physics.add.constraints.hinge(rotorLeft.body, axis.body, {
+        pivotA: { y: -0.2, z: z },
+        pivotB: { y: 1.3 },
+        axisA: { x: 1 },
+        axisB: { x: 1 }
+      })
     }
 
-    const body = this.addBody()
-    body.add(this.camera)
+    axisToRotor(rotorBackRight, rotorBackLeft, axisBackOne, 0.2)
+    axisToRotor(rotorBackRight, rotorBackLeft, axisBackTwo, -0.2)
+    axisToRotor(rotorFrontRight, rotorFrontLeft, axisFrontOne, 0.2)
+    axisToRotor(rotorFrontRight, rotorFrontLeft, axisFrontTwo, -0.2)
 
-    const axis = { front: this.addAxis(1.5), back: this.addAxis(-1.5) }
-
-    const car = { body, axis, wheels }
-    this.car = car
-
-    // constraints
-
-    const stiffness = 250
-    const damping = 0.01
-    const limits = {
-      linearLowerLimit: { x: 0, y: 0, z: 0 },
-      linearUpperLimit: { x: 0, y: 0.25, z: 0 },
-      angularLowerLimit: { x: 0, y: 0, z: -Math.PI },
-      angularUpperLimit: { x: 0, y: 0, z: Math.PI }
-    }
-    this.physics.add.constraints.spring(body.body, axis.back.body, {
-      angularLock: false,
-      ...limits,
-      stiffness,
-      damping,
-      offset: { x: 0.75, y: 0, z: 0 }
-    })
-
-    this.physics.add.constraints.spring(body.body, axis.back.body, {
-      angularLock: false,
-      ...limits,
-      stiffness,
-      damping,
-      offset: { x: -0.75, y: 0, z: 0 }
-    })
-
-    const axisMotor = this.physics.add.constraints.hinge(body.body, axis.front.body, {
-      pivotA: { z: 1.5, y: -0 },
-      pivotB: {},
-      axisA: { y: 1 },
-      axisB: { y: 1 }
-      // angularLowerLimit: {
-      //   x: 0,
-      //   y: -0.3,
-      //   z: 0
-      // },
-      // angularUpperLimit: {
-      //   x: 0,
-      //   y: 0.3,
-      //   z: 0
-      // }
-    })
-
-    const wheelLeft = { pivotA: { x: 1.25 }, pivotB: { x: 0 }, axisA: { x: 1 }, axisB: { y: -1 } }
-    const wheelRight = { pivotA: { x: -1.25 }, pivotB: { x: 0 }, axisA: { x: 1 }, axisB: { y: -1 } }
-
-    this.physics.add.constraints.hinge(axis.front.body, wheels.front.left.body, {
-      ...wheelLeft
-    })
-    this.physics.add.constraints.hinge(axis.front.body, wheels.front.right.body, {
-      ...wheelRight
-    })
-
-    const leftWheelMotor = this.physics.add.constraints.hinge(axis.back.body, wheels.back.left.body, {
-      ...wheelLeft
-    })
-
-    const rightWheelMotor = this.physics.add.constraints.hinge(axis.back.body, wheels.back.right.body, {
-      ...wheelRight
-    })
-
-    axisMotor.setLimit(-0.4, 0.4, 1, 1)
-    axisMotor.enableAngularMotor(true, 0, 100000.0)
-
-    // leftWheelMotor.setLimit(-Math.PI, Math.PI, 5, 5)
-    // rightWheelMotor.setLimit(-Math.PI, Math.PI, 5, 5)
-
-    this.motors = { axis: axisMotor, leftWheel: leftWheelMotor, rightWheel: rightWheelMotor }
+    const plate = this.addPlate()
+    this.physics.add.constraints.lock(plate.body, axisBackOne.body)
+    this.physics.add.constraints.lock(plate.body, axisBackTwo.body)
+    this.physics.add.constraints.lock(plate.body, axisFrontOne.body)
+    this.physics.add.constraints.lock(plate.body, axisFrontTwo.body)
 
     const press = (e: KeyboardEvent, isDown: boolean) => {
       e.preventDefault()
@@ -202,50 +173,11 @@ class MainScene extends Scene3D {
   }
 
   update() {
-    this.light.position.x = this.car.body.position.x
-    this.light.position.y = this.car.body.position.y + 200
-    this.light.position.z = this.car.body.position.z + 100
-    this.light.target = this.car.body
-
-    this.camera.lookAt(this.car.body.position)
-    // this.light.position.copy(this.car.body)
-    // this.light.position.add(new THREE.Vector3(-5, 9, 3))
-
-    const move = (direction: number) => {
-      console.log('move')
-      const speed = 50
-      // this.car.wheels.back.left.body.applyLocalTorque(0, direction * force, 0)
-      // this.car.wheels.back.right.body.applyLocalTorque(0, direction * force, 0)
-      // this.motors.leftWheel.setMotorTarget(direction, dt)
-      // this.motors.leftWheel.setMotorTarget(0, dt)
-      // this.motors.leftWheel.setMotorTarget(2, dt)
-      // this.motors.rightWheel.setMotorTarget(direction, wwwwdt)
-      this.motors.leftWheel.enableAngularMotor(true, speed * direction, 0.2)
-      this.motors.rightWheel.enableAngularMotor(true, speed * direction, 0.2)
-    }
-
-    const turn = (direction: number) => {
-      const dt = 0.5
-
-      this.motors.axis.setMotorTarget(direction, dt)
-      //   this.car.axis.front.body.applyLocalTorque(0, direction * force, 0)
-      //   this.car.axis.front.body.applyLocalTorque(0, direction * force, 0)
-    }
-
-    if (this.keys.w) move(1)
-    else if (this.keys.s) move(-1)
-    else {
-      this.motors.leftWheel.enableAngularMotor(true, 0, 0.02)
-      this.motors.rightWheel.enableAngularMotor(true, 0, 0.02)
-      // this.motors.leftWheel.enableMotor(false)
-      // this.motors.rightWheel.enableMotor(false)
-    }
-
-    if (this.keys.a) turn(1)
-    else if (this.keys.d) turn(-1)
-    else this.motors.axis.setMotorTarget(0, 1)
-
-    if (this.keys.space) this.car.body.body.applyForceY(2)
+    // this.light.position.x = this.car.body.position.x
+    // this.light.position.y = this.car.body.position.y + 200
+    // this.light.position.z = this.car.body.position.z + 100
+    // this.light.target = this.car.body
+    // this.camera.lookAt(this.car.body.position)
   }
 }
 
