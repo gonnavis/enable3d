@@ -3,7 +3,7 @@ import { MaterialConfig } from '../../enable3d/node_modules/@enable3d/common/dis
 import { SpotLight, SpotLightHelper, PointLight, DirectionalLight } from '../../threeWrapper/dist'
 
 var transparent = false
-var debug = false
+var debug = true
 
 class MainScene extends Scene3D {
   keys = {
@@ -19,8 +19,11 @@ class MainScene extends Scene3D {
 
   plate: ExtendedObject3D
 
-  motorRight: Ammo.btHingeConstraint
-  motorLeft: Ammo.btHingeConstraint
+  motorBackRight: Ammo.btHingeConstraint
+  motorBackLeft: Ammo.btHingeConstraint
+  motorFrontRight: Ammo.btHingeConstraint
+  motorFrontLeft: Ammo.btHingeConstraint
+
   m0: {
     right: Ammo.btHingeConstraint
     left: Ammo.btHingeConstraint
@@ -39,9 +42,9 @@ class MainScene extends Scene3D {
     return plate
   }
 
-  addAxis(z: number) {
+  addAxis(z: number, radius = 0.06) {
     const axis = this.add.cylinder(
-      { z, y: 1, mass: 10, radiusTop: 0.06, radiusBottom: 0.06, height: 2.575 },
+      { z, y: 1, mass: 10, radiusTop: radius, radiusBottom: radius, height: 2.6 },
       { lambert: { color: 'blue', transparent, opacity: 0.5 } }
     )
     axis.rotateZ(Math.PI / 2)
@@ -68,7 +71,7 @@ class MainScene extends Scene3D {
 
     wheel.rotateZ(Math.PI / 2)
     this.physics.add.existing(wheel)
-    wheel.body.setFriction(2)
+    wheel.body.setFriction(3)
     return wheel
   }
 
@@ -115,9 +118,9 @@ class MainScene extends Scene3D {
     const rotorFrontLeft = this.addRotor(-wheelX, -wheelZ)
 
     // blue axis
-    const axisBackOne = this.addAxis(wheelZ + axisZ) // the one at the back
-    const axisBackTwo = this.addAxis(wheelZ - axisZ)
-    const axisFrontOne = this.addAxis(-wheelZ + axisZ)
+    const axisBackOne = this.addAxis(wheelZ) // the one at the back
+    // const axisBackTwo = this.addAxis(wheelZ - axisZ)
+    const axisFrontOne = this.addAxis(-wheelZ + axisZ, 0.04)
     const axisFrontTwo = this.addAxis(-wheelZ - axisZ)
 
     // const axisRotor = this.addAxisRotor(0, 1, -wheelZ + 0.75)
@@ -128,14 +131,26 @@ class MainScene extends Scene3D {
 
     // constraint wheel to rotor
     const wheelToRotorConstraint = { axisA: { y: 1 }, axisB: { y: 1 } }
-    this.motorLeft = this.physics.add.constraints.hinge(wheelBackLeft.body, rotorBackLeft.body, wheelToRotorConstraint)
-    this.motorRight = this.physics.add.constraints.hinge(
+    this.motorBackLeft = this.physics.add.constraints.hinge(
+      wheelBackLeft.body,
+      rotorBackLeft.body,
+      wheelToRotorConstraint
+    )
+    this.motorBackRight = this.physics.add.constraints.hinge(
       wheelBackRight.body,
       rotorBackRight.body,
       wheelToRotorConstraint
     )
-    this.physics.add.constraints.hinge(wheelFrontLeft.body, rotorFrontLeft.body, wheelToRotorConstraint)
-    this.physics.add.constraints.hinge(wheelFrontRight.body, rotorFrontRight.body, wheelToRotorConstraint)
+    this.motorFrontLeft = this.physics.add.constraints.hinge(
+      wheelFrontLeft.body,
+      rotorFrontLeft.body,
+      wheelToRotorConstraint
+    )
+    this.motorFrontRight = this.physics.add.constraints.hinge(
+      wheelFrontRight.body,
+      rotorFrontRight.body,
+      wheelToRotorConstraint
+    )
 
     // constraint axis to rotor
     const axisToRotor = (rotorRight: any, rotorLeft: any, axis: any, z: number) => {
@@ -154,16 +169,21 @@ class MainScene extends Scene3D {
       return { right, left }
     }
 
-    axisToRotor(rotorBackRight, rotorBackLeft, axisBackOne, 0.2)
-    axisToRotor(rotorBackRight, rotorBackLeft, axisBackTwo, -0.2)
-    this.m0 = axisToRotor(rotorFrontRight, rotorFrontLeft, axisFrontOne, 0.2)
-    const m1 = axisToRotor(rotorFrontRight, rotorFrontLeft, axisFrontTwo, -0.2)
+    this.physics.add.constraints.lock(rotorBackRight.body, axisBackOne.body)
+    // this.physics.add.constraints.fixed(rotorBackRight.body, axisBackTwo.body)
+    this.physics.add.constraints.lock(rotorBackLeft.body, axisBackOne.body)
+    // this.physics.add.constraints.fixed(rotorBackLeft.body, axisBackTwo.body)
+    // axisToRotor(rotorBackRight, rotorBackLeft, axisBackOne, 0.2)
+    // axisToRotor(rotorBackRight, rotorBackLeft, axisBackTwo, -0.2)
+
+    this.m0 = axisToRotor(rotorFrontRight, rotorFrontLeft, axisFrontTwo, -0)
+    axisToRotor(rotorFrontRight, rotorFrontLeft, axisFrontOne, 0.4)
 
     this.plate = this.addPlate()
     this.plate.add(this.camera)
     this.camera.lookAt(this.plate.position.clone())
     this.physics.add.constraints.lock(this.plate.body, axisBackOne.body)
-    this.physics.add.constraints.lock(this.plate.body, axisBackTwo.body)
+    //this.physics.add.constraints.lock(this.plate.body, axisBackTwo.body)
 
     this.physics.add.constraints.lock(this.plate.body, axisFrontTwo.body)
 
@@ -171,8 +191,8 @@ class MainScene extends Scene3D {
     const dofSettings = {
       angularLowerLimit: { x: 0, y: 0, z: 0 },
       angularUpperLimit: { x: 0, y: 0, z: 0 },
-      linearLowerLimit: { x: -0.01, y: -limit, z: -0.01 },
-      linearUpperLimit: { x: 0.01, y: limit, z: 0.01 }
+      linearLowerLimit: { x: 0, y: -limit, z: -0.1 },
+      linearUpperLimit: { x: 0, y: limit, z: 0.1 }
     }
     this.physics.add.constraints.dof(this.plate.body, axisFrontOne.body, { ...dofSettings, offset: { y: 0.9 } })
     this.physics.add.constraints.dof(this.plate.body, axisFrontOne.body, { ...dofSettings, offset: { y: -0.9 } })
@@ -232,17 +252,23 @@ class MainScene extends Scene3D {
     const speed = 50
 
     if (this.keys.w) {
-      this.motorLeft.enableAngularMotor(true, -speed, 0.25)
-      this.motorRight.enableAngularMotor(true, -speed, 0.25)
+      this.motorBackLeft.enableAngularMotor(true, -speed, 0.25)
+      this.motorBackRight.enableAngularMotor(true, -speed, 0.25)
+      this.motorFrontLeft.enableAngularMotor(true, -speed, 0.25)
+      this.motorFrontRight.enableAngularMotor(true, -speed, 0.25)
     } else if (this.keys.s) {
-      this.motorLeft.enableAngularMotor(true, speed, 0.25)
-      this.motorRight.enableAngularMotor(true, speed, 0.25)
+      this.motorBackLeft.enableAngularMotor(true, speed, 0.25)
+      this.motorBackRight.enableAngularMotor(true, speed, 0.25)
+      this.motorFrontLeft.enableAngularMotor(true, speed, 0.25)
+      this.motorFrontRight.enableAngularMotor(true, speed, 0.25)
     } else {
-      this.motorLeft.enableAngularMotor(true, 0, 0.05)
-      this.motorRight.enableAngularMotor(true, 0, 0.05)
+      this.motorBackLeft.enableAngularMotor(true, 0, 0.05)
+      this.motorBackRight.enableAngularMotor(true, 0, 0.05)
+      this.motorFrontLeft.enableAngularMotor(true, 0, 0.05)
+      this.motorFrontRight.enableAngularMotor(true, 0, 0.05)
     }
 
-    const maxAngle = 0.35
+    const maxAngle = 0.5
 
     if (this.keys.a) {
       this.m0.left.setMotorTarget(-maxAngle, 0.5)
