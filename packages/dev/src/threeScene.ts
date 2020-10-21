@@ -2,7 +2,7 @@ import { Project, Scene3D, PhysicsLoader, ExtendedObject3D, THREE } from 'enable
 import { MaterialConfig } from '../../enable3d/node_modules/@enable3d/common/dist/types'
 import { SpotLight, SpotLightHelper, PointLight, DirectionalLight } from '../../threeWrapper/dist'
 
-var transparent = false
+var transparent = true
 var debug = true
 
 class MainScene extends Scene3D {
@@ -35,7 +35,7 @@ class MainScene extends Scene3D {
 
   addPlate() {
     const plate = this.add.box(
-      { y: 1.3, width: 1.8, depth: 4.7, mass: 50, height: 0.25 },
+      { y: 1, width: 1.8, depth: 4.7, mass: 5000, height: 0.25 },
       { lambert: { wireframe: true } }
     )
     this.physics.add.existing(plate)
@@ -249,7 +249,7 @@ class MainScene extends Scene3D {
 
     this.camera.lookAt(this.plate.position.clone())
 
-    const speed = 50
+    const speed = 30
 
     if (this.keys.w) {
       this.motorBackLeft.enableAngularMotor(true, -speed, 0.25)
@@ -268,7 +268,7 @@ class MainScene extends Scene3D {
       this.motorFrontRight.enableAngularMotor(true, 0, 0.05)
     }
 
-    const maxAngle = 0.5
+    const maxAngle = 0.4
 
     if (this.keys.a) {
       this.m0.left.setMotorTarget(-maxAngle, 0.5)
@@ -284,7 +284,7 @@ class MainScene extends Scene3D {
 }
 
 const startProject = () => {
-  PhysicsLoader('/lib', () => new Project({ scenes: [MainScene], maxSubSteps: 6, fixedTimeStep: 1 / 180 }))
+  PhysicsLoader('/lib', () => new Project({ scenes: [MainScene], maxSubSteps: 4, fixedTimeStep: 1 / 120 }))
 }
 
 export default startProject
