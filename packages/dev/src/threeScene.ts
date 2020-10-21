@@ -2,6 +2,9 @@ import { Project, Scene3D, PhysicsLoader, ExtendedObject3D, THREE } from 'enable
 import { MaterialConfig } from '../../enable3d/node_modules/@enable3d/common/dist/types'
 import { SpotLight, SpotLightHelper, PointLight, DirectionalLight } from '../../threeWrapper/dist'
 
+var transparent = false
+var debug = false
+
 class MainScene extends Scene3D {
   keys = {
     w: false,
@@ -11,14 +14,13 @@ class MainScene extends Scene3D {
     space: false
   }
   car: any
-  motors: {
-    leftWheel: Ammo.btHingeConstraint
-    rightWheel: Ammo.btHingeConstraint
-    axisLeft?: Ammo.btHingeConstraint
-    axisRight?: Ammo.btHingeConstraint
-  }
+
   light: DirectionalLight
 
+  plate: ExtendedObject3D
+
+  motorRight: Ammo.btHingeConstraint
+  motorLeft: Ammo.btHingeConstraint
   m0: {
     right: Ammo.btHingeConstraint
     left: Ammo.btHingeConstraint
@@ -40,7 +42,7 @@ class MainScene extends Scene3D {
   addAxis(z: number) {
     const axis = this.add.cylinder(
       { z, y: 1, mass: 10, radiusTop: 0.06, radiusBottom: 0.06, height: 2.575 },
-      { lambert: { color: 'blue', transparent: true, opacity: 0.5 } }
+      { lambert: { color: 'blue', transparent, opacity: 0.5 } }
     )
     axis.rotateZ(Math.PI / 2)
     this.physics.add.existing(axis)
@@ -50,7 +52,7 @@ class MainScene extends Scene3D {
   addRotor(x: number, z: number) {
     const rotor = this.add.cylinder(
       { mass: 10, radiusBottom: 0.35, radiusTop: 0.35, radiusSegments: 24, height: 0.4, x, y: 1, z },
-      { lambert: { color: 'red', transparent: true, opacity: 0.5 } }
+      { lambert: { color: 'red', transparent, opacity: 0.5 } }
     )
 
     rotor.rotateZ(Math.PI / 2)
@@ -61,19 +63,19 @@ class MainScene extends Scene3D {
   addWheel(x: number, z: number) {
     const wheel = this.add.cylinder(
       { mass: 20, radiusBottom: 0.5, radiusTop: 0.5, radiusSegments: 24, height: 0.35, x, y: 1, z },
-      { lambert: { color: 'blue', transparent: true, opacity: 0.5 } }
+      { lambert: { color: 'blue', transparent, opacity: 0.5 } }
     )
 
     wheel.rotateZ(Math.PI / 2)
     this.physics.add.existing(wheel)
-    // wheel.body.setFriction(2)
+    wheel.body.setFriction(2)
     return wheel
   }
 
   addAxisRotor(x: number, y: number, z: number) {
     const axisRotor = this.add.box(
       { x, y, z, mass: 5, width: 0.25, height: 0.2, depth: 1 },
-      { lambert: { transparent: true, opacity: 0.5 } }
+      { lambert: { transparent, opacity: 0.5 } }
     )
     this.physics.add.existing(axisRotor)
     return axisRotor
@@ -85,17 +87,16 @@ class MainScene extends Scene3D {
     this.load.texture('grass').then(grass => {
       grass.wrapS = grass.wrapT = 1000 // RepeatWrapping
       grass.offset.set(0, 0)
-      grass.repeat.set(20, 20)
+      grass.repeat.set(50, 50)
 
-      let ground = this.physics.add.ground({ width: 200, height: 200, y: 0 }, { phong: { map: grass } })
+      let ground = this.physics.add.ground({ width: 500, height: 500, y: 0 }, { phong: { map: grass } })
       ground.body.setFriction(1)
     })
 
-    this.physics.debug?.enable()
+    if (debug) this.physics.debug?.enable()
     this.physics.debug?.mode(2048 + 4096)
 
-    this.camera.position.set(0, 10, 0)
-    this.camera.lookAt(0, 0, 0)
+    this.camera.position.set(10, 10, 10)
 
     const wheelX = 1.5,
       wheelZ = 2,
@@ -127,17 +128,14 @@ class MainScene extends Scene3D {
 
     // constraint wheel to rotor
     const wheelToRotorConstraint = { axisA: { y: 1 }, axisB: { y: 1 } }
-    const motorLeft = this.physics.add.constraints.hinge(wheelBackLeft.body, rotorBackLeft.body, wheelToRotorConstraint)
-    const motorRight = this.physics.add.constraints.hinge(
+    this.motorLeft = this.physics.add.constraints.hinge(wheelBackLeft.body, rotorBackLeft.body, wheelToRotorConstraint)
+    this.motorRight = this.physics.add.constraints.hinge(
       wheelBackRight.body,
       rotorBackRight.body,
       wheelToRotorConstraint
     )
     this.physics.add.constraints.hinge(wheelFrontLeft.body, rotorFrontLeft.body, wheelToRotorConstraint)
     this.physics.add.constraints.hinge(wheelFrontRight.body, rotorFrontRight.body, wheelToRotorConstraint)
-
-    motorLeft.enableAngularMotor(true, -10, 0.05)
-    motorRight.enableAngularMotor(true, -10, 0.05)
 
     // constraint axis to rotor
     const axisToRotor = (rotorRight: any, rotorLeft: any, axis: any, z: number) => {
@@ -161,24 +159,23 @@ class MainScene extends Scene3D {
     this.m0 = axisToRotor(rotorFrontRight, rotorFrontLeft, axisFrontOne, 0.2)
     const m1 = axisToRotor(rotorFrontRight, rotorFrontLeft, axisFrontTwo, -0.2)
 
-    const plate = this.addPlate()
-    this.physics.add.constraints.lock(plate.body, axisBackOne.body)
-    this.physics.add.constraints.lock(plate.body, axisBackTwo.body)
+    this.plate = this.addPlate()
+    this.plate.add(this.camera)
+    this.camera.lookAt(this.plate.position.clone())
+    this.physics.add.constraints.lock(this.plate.body, axisBackOne.body)
+    this.physics.add.constraints.lock(this.plate.body, axisBackTwo.body)
 
-    this.physics.add.constraints.lock(plate.body, axisFrontTwo.body)
+    this.physics.add.constraints.lock(this.plate.body, axisFrontTwo.body)
 
-    const limit = 0.2
+    const limit = 0.3
     const dofSettings = {
       angularLowerLimit: { x: 0, y: 0, z: 0 },
       angularUpperLimit: { x: 0, y: 0, z: 0 },
-      linearLowerLimit: { x: -limit / 10, y: -limit, z: -limit / 10 },
-      linearUpperLimit: { x: limit / 10, y: limit, z: limit / 10 }
+      linearLowerLimit: { x: -0.01, y: -limit, z: -0.01 },
+      linearUpperLimit: { x: 0.01, y: limit, z: 0.01 }
     }
-    this.physics.add.constraints.dof(plate.body, axisFrontOne.body, {
-      ...dofSettings,
-      offset: { y: 0.6 }
-    })
-    this.physics.add.constraints.dof(plate.body, axisFrontOne.body, { ...dofSettings, offset: { y: -0.6 } })
+    this.physics.add.constraints.dof(this.plate.body, axisFrontOne.body, { ...dofSettings, offset: { y: 0.9 } })
+    this.physics.add.constraints.dof(this.plate.body, axisFrontOne.body, { ...dofSettings, offset: { y: -0.9 } })
     // this.physics.add.constraints.slider(plate.body, axisFrontOne.body, {
     //   frameA: { z: -1 }
     // })
@@ -230,12 +227,29 @@ class MainScene extends Scene3D {
     // this.light.target = this.car.body
     // this.camera.lookAt(this.car.body.position)
 
+    this.camera.lookAt(this.plate.position.clone())
+
+    const speed = 50
+
+    if (this.keys.w) {
+      this.motorLeft.enableAngularMotor(true, -speed, 0.25)
+      this.motorRight.enableAngularMotor(true, -speed, 0.25)
+    } else if (this.keys.s) {
+      this.motorLeft.enableAngularMotor(true, speed, 0.25)
+      this.motorRight.enableAngularMotor(true, speed, 0.25)
+    } else {
+      this.motorLeft.enableAngularMotor(true, 0, 0.05)
+      this.motorRight.enableAngularMotor(true, 0, 0.05)
+    }
+
+    const maxAngle = 0.35
+
     if (this.keys.a) {
-      this.m0.left.setMotorTarget(-0.3, 0.5)
-      this.m0.right.setMotorTarget(-0.3, 0.5)
+      this.m0.left.setMotorTarget(-maxAngle, 0.5)
+      this.m0.right.setMotorTarget(-maxAngle, 0.5)
     } else if (this.keys.d) {
-      this.m0.left.setMotorTarget(0.3, 0.5)
-      this.m0.right.setMotorTarget(0.3, 0.5)
+      this.m0.left.setMotorTarget(maxAngle, 0.5)
+      this.m0.right.setMotorTarget(maxAngle, 0.5)
     } else {
       this.m0.left.setMotorTarget(0, 0.5)
       this.m0.right.setMotorTarget(0, 0.5)
@@ -244,7 +258,7 @@ class MainScene extends Scene3D {
 }
 
 const startProject = () => {
-  PhysicsLoader('/lib', () => new Project({ scenes: [MainScene] }))
+  PhysicsLoader('/lib', () => new Project({ scenes: [MainScene], maxSubSteps: 6, fixedTimeStep: 1 / 180 }))
 }
 
 export default startProject

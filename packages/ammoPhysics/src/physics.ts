@@ -195,7 +195,7 @@ class AmmoPhysics extends EventEmitter {
     const solver = new Ammo.btSequentialImpulseConstraintSolver()
     this.physicsWorld = new Ammo.btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration)
     this.physicsWorld.setGravity(new Ammo.btVector3(g.x, g.y, g.z))
-    // this.physicsWorld.getSolverInfo().set_m_numIterations(240)
+    this.physicsWorld.getSolverInfo().set_m_numIterations(20)
     this.dispatcher = dispatcher
     this.tmpTrans = new Ammo.btTransform()
   }
