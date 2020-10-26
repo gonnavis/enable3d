@@ -74,6 +74,7 @@ export default class Constraints {
           angularUpperLimit?: XYZ
           center?: boolean
           offset?: XYZ
+          enableSpring?: boolean
         } = {},
         disableCollisionsBetweenLinkedBodies: boolean
       ) => this.spring(bodyA, bodyB, config, disableCollisionsBetweenLinkedBodies),
@@ -279,6 +280,7 @@ export default class Constraints {
       angularUpperLimit?: XYZ
       center?: boolean
       offset?: XYZ
+      enableSpring?: boolean
     } = {},
     disableCollisionsBetweenLinkedBodies = true
   ) {
@@ -291,7 +293,8 @@ export default class Constraints {
       angularLowerLimit: all = {},
       angularUpperLimit: aul = {},
       offset = {},
-      center = false
+      center = false,
+      enableSpring = true
     } = config
 
     const off = { x: 0, y: 0, z: 0, ...offset }
@@ -322,7 +325,7 @@ export default class Constraints {
     }
 
     for (let i = 0; i < 3; i++) {
-      constraint.enableSpring(i, true)
+      constraint.enableSpring(i, enableSpring)
       constraint.setStiffness(i, stiffness)
       constraint.setDamping(i, damping)
     }
