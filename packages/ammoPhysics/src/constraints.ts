@@ -24,22 +24,22 @@ export default class Constraints {
 
   public get addConstraints() {
     return {
-      lock: (body: PhysicsBody, targetBody: PhysicsBody, disableCollisionsBetweenLinkedBodies: boolean) =>
-        this.lock(body, targetBody, disableCollisionsBetweenLinkedBodies),
-      fixed: (body: PhysicsBody, targetBody: PhysicsBody, disableCollisionsBetweenLinkedBodies: boolean) =>
-        this.fixed(body, targetBody, disableCollisionsBetweenLinkedBodies),
+      lock: (bodyA: PhysicsBody, bodyB: PhysicsBody, disableCollisionsBetweenLinkedBodies: boolean) =>
+        this.lock(bodyA, bodyB, disableCollisionsBetweenLinkedBodies),
+      fixed: (bodyA: PhysicsBody, bodyB: PhysicsBody, disableCollisionsBetweenLinkedBodies: boolean) =>
+        this.fixed(bodyA, bodyB, disableCollisionsBetweenLinkedBodies),
       pointToPoint: (
-        body: PhysicsBody,
-        targetBody: PhysicsBody,
+        bodyA: PhysicsBody,
+        bodyB: PhysicsBody,
         config: {
           pivotA?: XYZ
           pivotB?: XYZ
         },
         disableCollisionsBetweenLinkedBodies: boolean
-      ) => this.pointToPoint(body, targetBody, config, disableCollisionsBetweenLinkedBodies),
+      ) => this.pointToPoint(bodyA, bodyB, config, disableCollisionsBetweenLinkedBodies),
       hinge: (
-        body: PhysicsBody,
-        targetBody: PhysicsBody,
+        bodyA: PhysicsBody,
+        bodyB: PhysicsBody,
         config: {
           pivotA?: XYZ
           pivotB?: XYZ
@@ -47,10 +47,10 @@ export default class Constraints {
           axisB?: XYZ
         },
         disableCollisionsBetweenLinkedBodies: boolean
-      ) => this.hinge(body, targetBody, config, disableCollisionsBetweenLinkedBodies),
+      ) => this.hinge(bodyA, bodyB, config, disableCollisionsBetweenLinkedBodies),
       slider: (
-        body: PhysicsBody,
-        targetBody: PhysicsBody,
+        bodyA: PhysicsBody,
+        bodyB: PhysicsBody,
         config: {
           frameA?: XYZ
           frameB?: XYZ
@@ -60,10 +60,10 @@ export default class Constraints {
           angularUpperLimit?: number
         } = {},
         disableCollisionsBetweenLinkedBodies: boolean
-      ) => this.slider(body, targetBody, config, disableCollisionsBetweenLinkedBodies),
+      ) => this.slider(bodyA, bodyB, config, disableCollisionsBetweenLinkedBodies),
       spring: (
-        body: PhysicsBody,
-        targetBody: PhysicsBody,
+        bodyA: PhysicsBody,
+        bodyB: PhysicsBody,
         config: {
           stiffness?: number
           damping?: number
@@ -76,7 +76,7 @@ export default class Constraints {
           offset?: XYZ
         } = {},
         disableCollisionsBetweenLinkedBodies: boolean
-      ) => this.spring(body, targetBody, config, disableCollisionsBetweenLinkedBodies),
+      ) => this.spring(bodyA, bodyB, config, disableCollisionsBetweenLinkedBodies),
       coneTwist: (
         bodyA: PhysicsBody,
         bodyB: PhysicsBody,
@@ -170,8 +170,8 @@ export default class Constraints {
   }
 
   private pointToPoint(
-    body: PhysicsBody,
-    targetBody: PhysicsBody,
+    bodyA: PhysicsBody,
+    bodyB: PhysicsBody,
     config: {
       pivotA?: XYZ
       pivotB?: XYZ
@@ -181,14 +181,14 @@ export default class Constraints {
     const { pivotA, pivotB } = config
     const pivotV3 = new Ammo.btVector3(pivotA?.x || 0, pivotA?.y || 0, pivotA?.z || 0)
     const targetPivotV3 = new Ammo.btVector3(pivotB?.x || 0, pivotB?.y || 0, pivotB?.z || 0)
-    const constraint = new Ammo.btPoint2PointConstraint(body.ammo, targetBody.ammo, pivotV3, targetPivotV3)
+    const constraint = new Ammo.btPoint2PointConstraint(bodyA.ammo, bodyB.ammo, pivotV3, targetPivotV3)
     this.physicsWorld.addConstraint(constraint, disableCollisionsBetweenLinkedBodies)
     return constraint
   }
 
   private hinge(
-    body: PhysicsBody,
-    targetBody: PhysicsBody,
+    bodyA: PhysicsBody,
+    bodyB: PhysicsBody,
     config: {
       pivotA?: XYZ
       pivotB?: XYZ
@@ -203,8 +203,8 @@ export default class Constraints {
     const axisV3 = new Ammo.btVector3(axisA?.x || 0, axisA?.y || 0, axisA?.z || 0)
     const targetAxisV3 = new Ammo.btVector3(axisB?.x || 0, axisB?.y || 0, axisB?.z || 0)
     const constraint = new Ammo.btHingeConstraint(
-      body.ammo,
-      targetBody.ammo,
+      bodyA.ammo,
+      bodyB.ammo,
       pivotV3,
       targetPivotV3,
       axisV3,
@@ -267,8 +267,8 @@ export default class Constraints {
   }
 
   private spring(
-    body: PhysicsBody,
-    targetBody: PhysicsBody,
+    bodyA: PhysicsBody,
+    bodyB: PhysicsBody,
     config: {
       stiffness?: number
       damping?: number
@@ -296,10 +296,10 @@ export default class Constraints {
 
     const off = { x: 0, y: 0, z: 0, ...offset }
 
-    const transform = this.getTransform(body.ammo, targetBody.ammo, off, center)
+    const transform = this.getTransform(bodyA.ammo, bodyB.ammo, off, center)
     const constraint = new Ammo.btGeneric6DofSpringConstraint(
-      body.ammo,
-      targetBody.ammo,
+      bodyA.ammo,
+      bodyB.ammo,
       transform.transformA,
       transform.transformB,
       true
